@@ -5,7 +5,7 @@ import { useState } from "react";
 export default function Home() {
   const menu = {
     Juices: [
-      { name: "Lemon Juice", price: 20 },
+      { name: "Lemon Juice", price: 5 },
       { name: "Sugarcane Juice", price: 30 },
       { name: "Watermelon Juice", price: 40 }
     ],
@@ -18,7 +18,7 @@ export default function Home() {
     ]
   };
 
-  const upiId = "9618060633.wallet@phonepe";
+  const upiId = "9618060633@ybl";
   const name = "Tirupati Food Stall";
 
   const [cart, setCart] = useState({});
