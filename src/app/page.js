@@ -4,44 +4,39 @@ import { useEffect, useState } from "react";
 import { pb } from "./pocketbase";
 
 export default function Home() {
-  const [menu, setMenu] = useState([
-    { id: "lemon", name: "Lemon Juice", price: 2, category: "Juices" },
+  const menu = [
+    { id: "lemon", name: "Lemon Juice", price: 20, category: "Juices" },
     { id: "sugarcane", name: "Sugarcane Juice", price: 30, category: "Juices" },
     { id: "dosa", name: "Dosa", price: 50, category: "Breakfast" },
     { id: "idli", name: "Idli", price: 30, category: "Breakfast" },
     { id: "egg", name: "Egg Curry", price: 70, category: "Meals" },
-  ]);
+  ];
 
   const [cart, setCart] = useState({});
   const [orders, setOrders] = useState([]);
   const [view, setView] = useState("customer");
+  const [token, setToken] = useState(null);
+  const [error, setError] = useState("");
 
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [isOwner, setIsOwner] = useState(false);
-  const [loginError, setLoginError] = useState("");
-
-  const [token, setToken] = useState(null);
-  const [orderError, setOrderError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const loadOrders = async () => {
     try {
       const data = await pb.collection("orders").getFullList({
         sort: "-created",
       });
-
       setOrders(data);
     } catch (err) {
-      console.error("LOAD ORDERS ERROR:", err);
-      setOrderError("Orders load error: " + err.message);
+      setError("Load error: " + JSON.stringify(err.response || err.message));
     }
   };
 
   useEffect(() => {
     loadOrders();
 
-    pb.collection("orders").subscribe("*", function () {
+    pb.collection("orders").subscribe("*", () => {
       loadOrders();
     });
 
@@ -59,17 +54,13 @@ export default function Home() {
     }));
   };
 
-  const removeItem = (itemId) => {
+  const removeItem = (id) => {
     setCart((prev) => {
       const copy = { ...prev };
+      if (!copy[id]) return copy;
 
-      if (!copy[itemId]) return copy;
-
-      if (copy[itemId].qty === 1) {
-        delete copy[itemId];
-      } else {
-        copy[itemId].qty -= 1;
-      }
+      if (copy[id].qty === 1) delete copy[id];
+      else copy[id].qty -= 1;
 
       return copy;
     });
@@ -83,57 +74,45 @@ export default function Home() {
   const placeOrder = async () => {
     if (total <= 0) return;
 
-    setLoading(true);
-    setOrderError("");
+    setError("");
 
     const newToken = "TIR" + Date.now().toString().slice(-6);
+    const orderItems = Object.values(cart);
 
-    const orderItems = Object.values(cart).map((item) => ({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      qty: item.qty,
-    }));
+    const payload = {
+      token: newToken,
+      items: JSON.stringify(orderItems),
+      total: Number(total),
+      status: "Pending",
+    };
 
     try {
-      await pb.collection("orders").create({
-        token: newToken,
-        items: JSON.stringify(orderItems),
-        total: total,
-        status: "Pending",
-      });
+      console.log("SENDING TO POCKETBASE:", payload);
+
+      const response = await pb.collection("orders").create(payload);
+
+      console.log("ORDER CREATED:", response);
 
       setToken(newToken);
       setCart({});
       await loadOrders();
     } catch (err) {
-      console.error("CREATE ORDER ERROR:", err);
-      setOrderError(
-        "Order failed: " +
-          (err?.response?.message || err?.message || JSON.stringify(err))
+      console.log("FULL ERROR:", err);
+      console.log("ERROR RESPONSE:", err?.response);
+
+      setError(
+        "Order failed:\n" +
+          JSON.stringify(err?.response || err?.message || err, null, 2)
       );
-    } finally {
-      setLoading(false);
     }
   };
 
-  const updateStatus = async (orderId, status) => {
+  const updateStatus = async (id, status) => {
     try {
-      await pb.collection("orders").update(orderId, { status });
+      await pb.collection("orders").update(id, { status });
       await loadOrders();
     } catch (err) {
-      console.error("UPDATE STATUS ERROR:", err);
-      alert("Status update failed");
-    }
-  };
-
-  const deleteOrder = async (orderId) => {
-    try {
-      await pb.collection("orders").delete(orderId);
-      await loadOrders();
-    } catch (err) {
-      console.error("DELETE ORDER ERROR:", err);
-      alert("Delete failed");
+      alert(JSON.stringify(err.response || err.message));
     }
   };
 
@@ -141,16 +120,10 @@ export default function Home() {
     if (loginUser === "aravind" && loginPass === "1234") {
       setIsOwner(true);
       setView("owner");
-      setLoginError("");
       loadOrders();
     } else {
-      setLoginError("Invalid username or password");
+      alert("Invalid username or password");
     }
-  };
-
-  const logout = () => {
-    setIsOwner(false);
-    setView("customer");
   };
 
   const groupedMenu = menu.reduce((acc, item) => {
@@ -160,62 +133,24 @@ export default function Home() {
   }, {});
 
   return (
-    <div
-      style={{
-        fontFamily: "Arial",
-        background: "#f5f5f5",
-        minHeight: "100vh",
-        paddingBottom: 90,
-      }}
-    >
-      <div
-        style={{
-          padding: 15,
-          background: "white",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        }}
-      >
-        <h2 style={{ margin: 0 }}>🍽️ Tirupati Food Stall</h2>
+    <div style={{ fontFamily: "Arial", background: "#f5f5f5", minHeight: "100vh", paddingBottom: 90 }}>
+      <div style={{ padding: 15, background: "white", display: "flex", justifyContent: "space-between" }}>
+        <h2>🍽️ Tirupati Food Stall</h2>
 
-        <button
-          onClick={() => setView(view === "customer" ? "login" : "customer")}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid #ddd",
-            background: "#fff",
-          }}
-        >
+        <button onClick={() => setView(view === "customer" ? "login" : "customer")}>
           {view === "customer" ? "Owner Login" : "Customer View"}
         </button>
       </div>
 
       {view === "login" && !isOwner && (
-        <div
-          style={{
-            padding: 20,
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-            maxWidth: 320,
-            margin: "30px auto",
-            background: "white",
-            borderRadius: 12,
-          }}
-        >
+        <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 10, maxWidth: 300 }}>
           <h2>🔐 Owner Login</h2>
 
           <input
             placeholder="Username"
             value={loginUser}
             onChange={(e) => setLoginUser(e.target.value)}
-            style={{ padding: 12, borderRadius: 8, border: "1px solid #ddd" }}
+            style={{ padding: 10 }}
           />
 
           <input
@@ -223,23 +158,12 @@ export default function Home() {
             placeholder="Password"
             value={loginPass}
             onChange={(e) => setLoginPass(e.target.value)}
-            style={{ padding: 12, borderRadius: 8, border: "1px solid #ddd" }}
+            style={{ padding: 10 }}
           />
 
-          <button
-            onClick={handleLogin}
-            style={{
-              padding: 12,
-              background: "green",
-              color: "white",
-              border: "none",
-              borderRadius: 8,
-            }}
-          >
+          <button onClick={handleLogin} style={{ padding: 10, background: "green", color: "white" }}>
             Login
           </button>
-
-          {loginError && <p style={{ color: "red" }}>{loginError}</p>}
         </div>
       )}
 
@@ -256,13 +180,11 @@ export default function Home() {
                   key={item.id}
                   style={{
                     background: "white",
-                    padding: 14,
-                    marginBottom: 12,
+                    padding: 12,
+                    marginBottom: 10,
                     display: "flex",
                     justifyContent: "space-between",
-                    alignItems: "center",
-                    borderRadius: 14,
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                    borderRadius: 10,
                   }}
                 >
                   <div>
@@ -272,11 +194,7 @@ export default function Home() {
 
                   <div>
                     <button onClick={() => removeItem(item.id)}>-</button>
-
-                    <span style={{ margin: "0 12px" }}>
-                      {cart[item.id]?.qty || 0}
-                    </span>
-
+                    <span style={{ margin: "0 10px" }}>{cart[item.id]?.qty || 0}</span>
                     <button onClick={() => addItem(item)}>+</button>
                   </div>
                 </div>
@@ -284,99 +202,33 @@ export default function Home() {
             </div>
           ))}
 
-          {orderError && (
-            <pre
-              style={{
-                background: "#ffe5e5",
-                color: "red",
-                padding: 12,
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {orderError}
+          {error && (
+            <pre style={{ background: "#ffe5e5", color: "red", padding: 12, whiteSpace: "pre-wrap" }}>
+              {error}
             </pre>
           )}
         </div>
       )}
 
       {view === "customer" && total > 0 && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            background: "green",
-            color: "white",
-            padding: 15,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            zIndex: 20,
-          }}
-        >
-          <span>
-            🛒 {Object.keys(cart).length} items | ₹{total}
-          </span>
-
-          <button
-            onClick={placeOrder}
-            disabled={loading}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: "none",
-              fontWeight: "bold",
-            }}
-          >
-            {loading ? "Placing..." : "Place Order"}
-          </button>
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "green", color: "white", padding: 15, display: "flex", justifyContent: "space-between" }}>
+          <span>🛒 ₹{total}</span>
+          <button onClick={placeOrder}>Place Order</button>
         </div>
       )}
 
       {token && view === "customer" && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "white",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 30,
-          }}
-        >
+        <div style={{ position: "fixed", inset: 0, background: "white", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
           <h2>🎟️ Your Token</h2>
-          <h1 style={{ fontSize: 60, color: "green" }}>{token}</h1>
-          <p>Please show this token at the counter.</p>
-
-          <button
-            onClick={() => setToken(null)}
-            style={{
-              padding: 12,
-              background: "green",
-              color: "white",
-              border: "none",
-              borderRadius: 8,
-            }}
-          >
-            Close
-          </button>
+          <h1>{token}</h1>
+          <button onClick={() => setToken(null)}>Close</button>
         </div>
       )}
 
       {view === "owner" && isOwner && (
         <div style={{ padding: 15 }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <h2>🧑‍🍳 Owner Dashboard</h2>
-
-            <button onClick={logout}>Logout</button>
-          </div>
-
-          <h3>Live Orders: {orders.length}</h3>
-
-          {orders.length === 0 && <p>No orders yet</p>}
+          <h2>🧑‍🍳 Owner Dashboard</h2>
+          <p>Live Orders: {orders.length}</p>
 
           {orders.map((order) => {
             let items = [];
@@ -388,63 +240,20 @@ export default function Home() {
             }
 
             return (
-              <div
-                key={order.id}
-                style={{
-                  background: "white",
-                  padding: 14,
-                  marginBottom: 12,
-                  borderLeft:
-                    order.status === "Ready"
-                      ? "5px solid blue"
-                      : order.status === "Delivered"
-                      ? "5px solid gray"
-                      : "5px solid green",
-                  borderRadius: 12,
-                }}
-              >
-                <h2>Token: {order.token}</h2>
+              <div key={order.id} style={{ background: "white", padding: 12, marginBottom: 10, borderLeft: "5px solid green" }}>
+                <h3>Token: {order.token}</h3>
                 <p>Total: ₹{order.total}</p>
-                <p>
-                  Status: <b>{order.status}</b>
-                </p>
+                <p>Status: <b>{order.status}</b></p>
 
                 <ul>
                   {items.map((i) => (
-                    <li key={i.id}>
-                      {i.name} × {i.qty} = ₹{Number(i.price) * Number(i.qty)}
-                    </li>
+                    <li key={i.id}>{i.name} × {i.qty}</li>
                   ))}
                 </ul>
 
-                <button onClick={() => updateStatus(order.id, "Preparing")}>
-                  Preparing
-                </button>
-
-                <button
-                  onClick={() => updateStatus(order.id, "Ready")}
-                  style={{ marginLeft: 8 }}
-                >
-                  Ready
-                </button>
-
-                <button
-                  onClick={() => updateStatus(order.id, "Delivered")}
-                  style={{ marginLeft: 8 }}
-                >
-                  Delivered
-                </button>
-
-                <button
-                  onClick={() => deleteOrder(order.id)}
-                  style={{
-                    marginLeft: 8,
-                    background: "red",
-                    color: "white",
-                  }}
-                >
-                  Delete
-                </button>
+                <button onClick={() => updateStatus(order.id, "Preparing")}>Preparing</button>
+                <button onClick={() => updateStatus(order.id, "Ready")} style={{ marginLeft: 10 }}>Ready</button>
+                <button onClick={() => updateStatus(order.id, "Delivered")} style={{ marginLeft: 10 }}>Delivered</button>
               </div>
             );
           })}
