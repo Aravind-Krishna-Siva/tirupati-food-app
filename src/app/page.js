@@ -5,9 +5,8 @@ import { useState } from "react";
 export default function Home() {
   const menu = {
     Juices: [
-      { name: "Lemon Juice", price: 5 },
-      { name: "Sugarcane Juice", price: 2 },
-      { name: "Watermelon Juice", price: 40 }
+      { name: "Lemon Juice", price: 4 },
+      { name: "Sugarcane Juice", price: 5 }
     ],
     Breakfast: [
       { name: "Dosa", price: 50 },
@@ -63,22 +62,17 @@ export default function Home() {
     setOrderPlaced(true);
   };
 
-  // UPI INTENT LINK (IMPORTANT FIX)
+  // UPI LINK (NO QR)
   const upiLink =
     `upi://pay?pa=${upiId}&pn=${merchantName}&am=${total}&cu=INR`;
 
-  // GENERATE TOKEN
+  // TOKEN GENERATION
   const generateToken = () => {
     setToken("TIR" + Math.floor(1000 + Math.random() * 9000));
     setCart({});
     setOrderPlaced(false);
     setPaid(false);
   };
-
-  // QR CODE (UPI INTENT INSIDE QR)
-  const qrCode =
-    `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=` +
-    encodeURIComponent(upiLink);
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
@@ -121,14 +115,20 @@ export default function Home() {
       {/* TOTAL */}
       <h2>🛒 Total: ₹{total}</h2>
 
+      {/* PLACE ORDER */}
       <button
         onClick={placeOrder}
-        style={{ padding: 10, background: "green", color: "white" }}
+        style={{
+          padding: 10,
+          background: "green",
+          color: "white",
+          border: "none"
+        }}
       >
         Place Order
       </button>
 
-      {/* PAYMENT SECTION */}
+      {/* PAYMENT */}
       {orderPlaced && (
         <div style={{ marginTop: 20 }}>
           <h2>💳 Pay Using UPI</h2>
@@ -136,16 +136,31 @@ export default function Home() {
           <p><b>UPI ID:</b> {upiId}</p>
           <p><b>Amount:</b> ₹{total}</p>
 
-          {/* QR CODE */}
-          <img src={qrCode} alt="UPI QR" />
+          <button
+            onClick={() => {
+              window.location.href = upiLink;
+            }}
+            style={{
+              padding: 12,
+              background: "blue",
+              color: "white",
+              border: "none"
+            }}
+          >
+            Pay with PhonePe / GPay / Paytm
+          </button>
 
           <p style={{ marginTop: 10 }}>
-            Scan using PhonePe / Google Pay / Paytm
+            After payment click below:
           </p>
 
           <button
             onClick={() => setPaid(true)}
-            style={{ padding: 10, background: "blue", color: "white" }}
+            style={{
+              padding: 10,
+              background: "orange",
+              border: "none"
+            }}
           >
             I Have Paid
           </button>
@@ -157,7 +172,12 @@ export default function Home() {
         <div style={{ marginTop: 20 }}>
           <button
             onClick={generateToken}
-            style={{ padding: 10, background: "orange" }}
+            style={{
+              padding: 10,
+              background: "purple",
+              color: "white",
+              border: "none"
+            }}
           >
             Generate Token
           </button>
@@ -166,16 +186,11 @@ export default function Home() {
 
       {token && (
         <div style={{ marginTop: 20 }}>
-          <h2>🎟️ Your Token</h2>
+          <h2>🎟️ Token</h2>
           <h1>{token}</h1>
           <p>Show this at counter</p>
         </div>
       )}
-
-      {/* INFO */}
-      <div style={{ marginTop: 30, fontSize: 12, color: "gray" }}>
-        Payments supported: PhonePe, Google Pay, Paytm, BHIM UPI
-      </div>
     </div>
   );
 }
