@@ -5,7 +5,7 @@ import { pb } from "./pocketbase";
 
 export default function Home() {
   const [menu, setMenu] = useState([
-    { id: "lemon", name: "Lemon Juice", price: 20, category: "Juices" },
+    { id: "lemon", name: "Lemon Juice", price: 2, category: "Juices" },
     { id: "sugarcane", name: "Sugarcane Juice", price: 30, category: "Juices" },
     { id: "dosa", name: "Dosa", price: 50, category: "Breakfast" },
     { id: "idli", name: "Idli", price: 30, category: "Breakfast" },
