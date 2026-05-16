@@ -22,71 +22,68 @@ export default function Home() {
   const name = "Tirupati Food Stall";
 
   const [cart, setCart] = useState({});
-  const [orderActive, setOrderActive] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [paid, setPaid] = useState(false);
   const [token, setToken] = useState(null);
 
-  // ADD ITEM
+  // add item
   const addItem = (item) => {
-    setCart((prev) => {
-      const existing = prev[item.name];
-      return {
-        ...prev,
-        [item.name]: existing
-          ? { ...existing, qty: existing.qty + 1 }
-          : { ...item, qty: 1 }
-      };
-    });
+    setCart((prev) => ({
+      ...prev,
+      [item.name]: prev[item.name]
+        ? { ...item, qty: prev[item.name].qty + 1 }
+        : { ...item, qty: 1 }
+    }));
   };
 
-  // REMOVE ITEM
+  // remove item
   const removeItem = (name) => {
     setCart((prev) => {
-      const existing = prev[name];
-      if (!existing) return prev;
+      const copy = { ...prev };
+      if (!copy[name]) return prev;
 
-      if (existing.qty === 1) {
-        const updated = { ...prev };
-        delete updated[name];
-        return updated;
+      if (copy[name].qty === 1) {
+        delete copy[name];
+      } else {
+        copy[name].qty -= 1;
       }
-
-      return {
-        ...prev,
-        [name]: { ...existing, qty: existing.qty - 1 }
-      };
+      return copy;
     });
   };
 
-  // TOTAL
+  // total
   const total = Object.values(cart).reduce(
     (sum, item) => sum + item.price * item.qty,
     0
   );
 
-  // START ORDER
+  // place order
   const placeOrder = () => {
     if (Object.keys(cart).length === 0) return;
-    setOrderActive(true);
+    setOrderPlaced(true);
   };
 
-  // UPI LINK
-  const upiLink = `upi://pay?pa=${upiId}&pn=${name}&am=${total}&cu=INR`;
-
-  // PAYMENT CONFIRM
-  const confirmPayment = () => {
+  // generate token after payment
+  const generateToken = () => {
     setToken("TIR" + Math.floor(1000 + Math.random() * 9000));
     setCart({});
-    setOrderActive(false);
+    setOrderPlaced(false);
+    setPaid(false);
   };
 
+  // UPI QR (static, reliable)
+  const upiQR =
+    `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=` +
+    `upi://pay?pa=${upiId}&pn=${name}&am=${total}&cu=INR`;
+
   return (
-    <div style={{ padding: 20, fontFamily: "Arial", background: "#f9f9f9" }}>
+    <div style={{ padding: 20, fontFamily: "Arial" }}>
       <h1>🍽️ Tirupati Food Stall</h1>
 
       {/* MENU */}
-      {Object.entries(menu).map(([category, items]) => (
-        <div key={category} style={{ marginTop: 20 }}>
-          <h2>{category}</h2>
+      {Object.entries(menu).map(([cat, items]) => (
+        <div key={cat} style={{ marginTop: 20 }}>
+          <h2>{cat}</h2>
 
           {items.map((item) => (
             <div
@@ -94,16 +91,14 @@ export default function Home() {
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                background: "#fff",
-                padding: 10,
-                marginBottom: 10,
-                borderRadius: 10
+                marginBottom: 8,
+                padding: 8,
+                border: "1px solid #ddd"
               }}
             >
-              <div>
-                <b>{item.name}</b>
-                <div>₹{item.price}</div>
-              </div>
+              <span>
+                {item.name} - ₹{item.price}
+              </span>
 
               <div>
                 <button onClick={() => removeItem(item.name)}>-</button>
@@ -119,66 +114,52 @@ export default function Home() {
 
       <hr />
 
-      {/* TOTAL */}
       <h2>🛒 Total: ₹{total}</h2>
 
-      {/* PLACE ORDER */}
       <button
         onClick={placeOrder}
-        style={{
-          padding: 12,
-          background: "green",
-          color: "white",
-          border: "none",
-          borderRadius: 8
-        }}
+        style={{ padding: 10, background: "green", color: "white" }}
       >
         Place Order
       </button>
 
       {/* PAYMENT SECTION */}
-      {orderActive && (
-        <div style={{ marginTop: 20, background: "#fff", padding: 15 }}>
+      {orderPlaced && (
+        <div style={{ marginTop: 20 }}>
           <h2>💳 Pay via UPI</h2>
-          <p>Amount: ₹{total}</p>
 
-          <a href={upiLink}>
-            <button
-              style={{
-                padding: 10,
-                background: "blue",
-                color: "white",
-                border: "none",
-                borderRadius: 8
-              }}
-            >
-              Pay with PhonePe / GPay
-            </button>
-          </a>
+          <p><b>UPI ID:</b> {upiId}</p>
+          <p><b>Amount:</b> ₹{total}</p>
 
-          <p style={{ marginTop: 10 }}>
-            After payment click below:
-          </p>
+          {/* QR CODE */}
+          <img src={upiQR} alt="UPI QR" />
+
+          <p>Scan QR using PhonePe / GPay</p>
 
           <button
-            onClick={confirmPayment}
-            style={{
-              padding: 10,
-              background: "green",
-              color: "white",
-              border: "none",
-              borderRadius: 8
-            }}
+            onClick={() => setPaid(true)}
+            style={{ padding: 10, background: "blue", color: "white" }}
           >
-            I Have Paid → Generate Token
+            I Have Paid
           </button>
         </div>
       )}
 
       {/* TOKEN */}
+      {paid && !token && (
+        <div style={{ marginTop: 20 }}>
+          <button
+            onClick={generateToken}
+            style={{ padding: 10, background: "orange" }}
+          >
+            Generate Token
+          </button>
+        </div>
+      )}
+
       {token && (
-        <div style={{ marginTop: 20, background: "#fff", padding: 15 }}>
-          <h2>🎟️ Your Token</h2>
+        <div style={{ marginTop: 20 }}>
+          <h2>🎟️ Token</h2>
           <h1>{token}</h1>
           <p>Show this at counter</p>
         </div>
