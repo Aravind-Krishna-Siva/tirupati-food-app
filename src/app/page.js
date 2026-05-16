@@ -5,8 +5,8 @@ import { useState } from "react";
 export default function Home() {
   const menu = {
     Juices: [
-      { name: "Lemon Juice", price: 4 },
-      { name: "Sugarcane Juice", price: 5 }
+      { name: "Lemon Juice", price: 1 },
+      { name: "Sugarcane Juice", price: 2 }
     ],
     Breakfast: [
       { name: "Dosa", price: 50 },
@@ -58,13 +58,17 @@ export default function Home() {
 
   // PLACE ORDER
   const placeOrder = () => {
-    if (Object.keys(cart).length === 0) return;
+    if (total <= 0) return;
     setOrderPlaced(true);
   };
 
-  // UPI LINK (NO QR)
+  // 🔥 SAFE UPI LINK (FIXED VERSION)
   const upiLink =
-    `upi://pay?pa=${upiId}&pn=${merchantName}&am=${total}&cu=INR`;
+    `upi://pay?pa=${upiId}` +
+    `&pn=${encodeURIComponent(merchantName)}` +
+    `&tn=${encodeURIComponent("Food Order")}` +
+    `&am=${total}` +
+    `&cu=INR`;
 
   // TOKEN GENERATION
   const generateToken = () => {
@@ -151,7 +155,7 @@ export default function Home() {
           </button>
 
           <p style={{ marginTop: 10 }}>
-            After payment click below:
+            After successful payment click below:
           </p>
 
           <button
@@ -191,6 +195,10 @@ export default function Home() {
           <p>Show this at counter</p>
         </div>
       )}
+
+      <div style={{ marginTop: 30, fontSize: 12, color: "gray" }}>
+        Payments supported: PhonePe, Google Pay, Paytm, BHIM UPI
+      </div>
     </div>
   );
 }
