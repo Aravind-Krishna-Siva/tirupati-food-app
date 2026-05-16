@@ -6,7 +6,7 @@ export default function Home() {
   const menu = {
     Juices: [
       { name: "Lemon Juice", price: 5 },
-      { name: "Sugarcane Juice", price: 30 },
+      { name: "Sugarcane Juice", price: 2 },
       { name: "Watermelon Juice", price: 40 }
     ],
     Breakfast: [
@@ -19,14 +19,14 @@ export default function Home() {
   };
 
   const upiId = "9618060633@ybl";
-  const name = "Tirupati Food Stall";
+  const merchantName = "Tirupati Food Stall";
 
   const [cart, setCart] = useState({});
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [paid, setPaid] = useState(false);
   const [token, setToken] = useState(null);
 
-  // add item
+  // ADD ITEM
   const addItem = (item) => {
     setCart((prev) => ({
       ...prev,
@@ -36,7 +36,7 @@ export default function Home() {
     }));
   };
 
-  // remove item
+  // REMOVE ITEM
   const removeItem = (name) => {
     setCart((prev) => {
       const copy = { ...prev };
@@ -51,19 +51,23 @@ export default function Home() {
     });
   };
 
-  // total
+  // TOTAL
   const total = Object.values(cart).reduce(
     (sum, item) => sum + item.price * item.qty,
     0
   );
 
-  // place order
+  // PLACE ORDER
   const placeOrder = () => {
     if (Object.keys(cart).length === 0) return;
     setOrderPlaced(true);
   };
 
-  // generate token after payment
+  // UPI INTENT LINK (IMPORTANT FIX)
+  const upiLink =
+    `upi://pay?pa=${upiId}&pn=${merchantName}&am=${total}&cu=INR`;
+
+  // GENERATE TOKEN
   const generateToken = () => {
     setToken("TIR" + Math.floor(1000 + Math.random() * 9000));
     setCart({});
@@ -71,10 +75,10 @@ export default function Home() {
     setPaid(false);
   };
 
-  // UPI QR (static, reliable)
-  const upiQR =
+  // QR CODE (UPI INTENT INSIDE QR)
+  const qrCode =
     `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=` +
-    `upi://pay?pa=${upiId}&pn=${name}&am=${total}&cu=INR`;
+    encodeURIComponent(upiLink);
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
@@ -91,9 +95,9 @@ export default function Home() {
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                marginBottom: 8,
                 padding: 8,
-                border: "1px solid #ddd"
+                border: "1px solid #ddd",
+                marginBottom: 8
               }}
             >
               <span>
@@ -114,6 +118,7 @@ export default function Home() {
 
       <hr />
 
+      {/* TOTAL */}
       <h2>🛒 Total: ₹{total}</h2>
 
       <button
@@ -126,15 +131,17 @@ export default function Home() {
       {/* PAYMENT SECTION */}
       {orderPlaced && (
         <div style={{ marginTop: 20 }}>
-          <h2>💳 Pay via UPI</h2>
+          <h2>💳 Pay Using UPI</h2>
 
           <p><b>UPI ID:</b> {upiId}</p>
           <p><b>Amount:</b> ₹{total}</p>
 
           {/* QR CODE */}
-          <img src={upiQR} alt="UPI QR" />
+          <img src={qrCode} alt="UPI QR" />
 
-          <p>Scan QR using PhonePe / GPay</p>
+          <p style={{ marginTop: 10 }}>
+            Scan using PhonePe / Google Pay / Paytm
+          </p>
 
           <button
             onClick={() => setPaid(true)}
@@ -159,11 +166,16 @@ export default function Home() {
 
       {token && (
         <div style={{ marginTop: 20 }}>
-          <h2>🎟️ Token</h2>
+          <h2>🎟️ Your Token</h2>
           <h1>{token}</h1>
           <p>Show this at counter</p>
         </div>
       )}
+
+      {/* INFO */}
+      <div style={{ marginTop: 30, fontSize: 12, color: "gray" }}>
+        Payments supported: PhonePe, Google Pay, Paytm, BHIM UPI
+      </div>
     </div>
   );
 }
