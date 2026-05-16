@@ -17,7 +17,7 @@ export default function Home() {
     ]
   };
 
-  const upiId = "9618060633@ybl";
+  const upiId = "ds.aravind@ybl";
   const merchantName = "Tirupati Food Stall";
 
   const [cart, setCart] = useState({});
