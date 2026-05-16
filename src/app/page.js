@@ -5,7 +5,7 @@ import { useState } from "react";
 export default function Home() {
   const menu = {
     Juices: [
-      { name: "Lemon Juice", price: 1 },
+      { name: "Lemon Juice", price: 3 },
       { name: "Sugarcane Juice", price: 2 }
     ],
     Breakfast: [
@@ -17,8 +17,14 @@ export default function Home() {
     ]
   };
 
-  const upiId = "ds.aravind@ybl";
-  const merchantName = "Tirupati Food Stall";
+  const upiId = "9618060633@ybl";
+
+  const bankDetails = {
+    name: "Tirupati Food Stall",
+    account: "234001000918",
+    ifsc: "ICIC0000551",
+    bank: "ICICI Bank"
+  };
 
   const [cart, setCart] = useState({});
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -58,19 +64,26 @@ export default function Home() {
 
   // PLACE ORDER
   const placeOrder = () => {
-    if (total <= 0) return;
+    if (total <= 0) {
+      alert("Please add items first");
+      return;
+    }
     setOrderPlaced(true);
   };
 
-  // 🔥 SAFE UPI LINK (FIXED VERSION)
-  const upiLink =
+  // UPI QR (STABLE)
+  const upiString =
     `upi://pay?pa=${upiId}` +
-    `&pn=${encodeURIComponent(merchantName)}` +
+    `&pn=${encodeURIComponent("Tirupati Food Stall")}` +
     `&tn=${encodeURIComponent("Food Order")}` +
     `&am=${total}` +
     `&cu=INR`;
 
-  // TOKEN GENERATION
+  const qrCode =
+    `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=` +
+    encodeURIComponent(upiString);
+
+  // TOKEN
   const generateToken = () => {
     setToken("TIR" + Math.floor(1000 + Math.random() * 9000));
     setCart({});
@@ -132,38 +145,44 @@ export default function Home() {
         Place Order
       </button>
 
-      {/* PAYMENT */}
+      {/* PAYMENT SECTION */}
       {orderPlaced && (
         <div style={{ marginTop: 20 }}>
-          <h2>💳 Pay Using UPI</h2>
+          <h2>💳 Payment Options</h2>
 
-          <p><b>UPI ID:</b> {upiId}</p>
-          <p><b>Amount:</b> ₹{total}</p>
+          {/* UPI QR */}
+          <p><b>Scan & Pay (Recommended):</b></p>
+          <img
+            src={qrCode}
+            alt="UPI QR"
+            style={{ border: "1px solid #ccc" }}
+          />
 
-          <button
-            onClick={() => {
-              window.location.href = upiLink;
-            }}
-            style={{
-              padding: 12,
-              background: "blue",
-              color: "white",
-              border: "none"
-            }}
-          >
-            Pay with PhonePe / GPay / Paytm
-          </button>
+          <p>UPI ID: {upiId}</p>
 
-          <p style={{ marginTop: 10 }}>
-            After successful payment click below:
+          <hr />
+
+          {/* BANK DETAILS */}
+          <h3>🏦 Bank Transfer (Backup)</h3>
+
+          <p><b>Bank:</b> {bankDetails.bank}</p>
+          <p><b>Account Name:</b> {bankDetails.name}</p>
+          <p><b>Account Number:</b> {bankDetails.account}</p>
+          <p><b>IFSC Code:</b> {bankDetails.ifsc}</p>
+
+          <p style={{ fontSize: 12, color: "gray" }}>
+            ⚠️ Bank transfer may take time to confirm. Show screenshot at counter.
           </p>
 
+          {/* PAYMENT CONFIRM */}
           <button
             onClick={() => setPaid(true)}
             style={{
               padding: 10,
-              background: "orange",
-              border: "none"
+              background: "blue",
+              color: "white",
+              border: "none",
+              marginTop: 10
             }}
           >
             I Have Paid
@@ -178,8 +197,7 @@ export default function Home() {
             onClick={generateToken}
             style={{
               padding: 10,
-              background: "purple",
-              color: "white",
+              background: "orange",
               border: "none"
             }}
           >
@@ -190,14 +208,14 @@ export default function Home() {
 
       {token && (
         <div style={{ marginTop: 20 }}>
-          <h2>🎟️ Token</h2>
+          <h2>🎟️ Token Number</h2>
           <h1>{token}</h1>
           <p>Show this at counter</p>
         </div>
       )}
 
       <div style={{ marginTop: 30, fontSize: 12, color: "gray" }}>
-        Payments supported: PhonePe, Google Pay, Paytm, BHIM UPI
+        ✔ QR Payment (Instant) | ✔ Bank Transfer (Backup) | ✔ Token System Enabled
       </div>
     </div>
   );
