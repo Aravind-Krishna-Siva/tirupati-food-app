@@ -5,23 +5,24 @@ import { useState } from "react";
 export default function Home() {
   const menu = {
     Juices: [
-      { name: "Lemon Juice", price: 20, image: "https://images.unsplash.com/photo-1587735243615-c03f25aaff15" },
-      { name: "Sugarcane Juice", price: 30, image: "https://images.unsplash.com/photo-1622597467836-f3c7ca5c9f89" }
+      { name: "Lemon Juice", price: 20 },
+      { name: "Sugarcane Juice", price: 30 }
     ],
     Breakfast: [
-      { name: "Dosa", price: 50, image: "https://images.unsplash.com/photo-1668236543090-82b4e8d5c6d6" },
-      { name: "Idli", price: 30, image: "https://images.unsplash.com/photo-1626777552726-4a6b54b4b2d1" }
+      { name: "Dosa", price: 50 },
+      { name: "Idli", price: 30 }
     ],
     Meals: [
-      { name: "Egg Curry", price: 70, image: "https://images.unsplash.com/photo-1604908177522-040f3d5a3b1c" }
+      { name: "Egg Curry", price: 70 }
     ]
   };
 
   const [cart, setCart] = useState({});
+  const [orders, setOrders] = useState([]);
+  const [view, setView] = useState("customer"); // 👈 toggle screen
   const [token, setToken] = useState(null);
-  const [orders, setOrders] = useState([]); // 👈 OWNER DASHBOARD DATA
 
-  // ADD ITEM
+  // ADD
   const addItem = (item) => {
     setCart((prev) => ({
       ...prev,
@@ -31,7 +32,7 @@ export default function Home() {
     }));
   };
 
-  // REMOVE ITEM
+  // REMOVE
   const removeItem = (name) => {
     setCart((prev) => {
       const copy = { ...prev };
@@ -49,7 +50,7 @@ export default function Home() {
     0
   );
 
-  // PLACE ORDER → CREATE TOKEN + STORE ORDER
+  // PLACE ORDER
   const placeOrder = () => {
     if (total <= 0) return;
 
@@ -62,12 +63,12 @@ export default function Home() {
       status: "Pending"
     };
 
-    setOrders((prev) => [newOrder, ...prev]); // 👈 ADD TO OWNER BOARD
+    setOrders((prev) => [newOrder, ...prev]);
     setToken(newToken);
     setCart({});
   };
 
-  // UPDATE STATUS (OWNER)
+  // STATUS UPDATE
   const updateStatus = (token, status) => {
     setOrders((prev) =>
       prev.map((o) =>
@@ -77,26 +78,44 @@ export default function Home() {
   };
 
   return (
-    <div style={{ fontFamily: "Arial", background: "#f5f5f5" }}>
+    <div style={{ fontFamily: "Arial", background: "#f5f5f5", minHeight: "100vh" }}>
 
       {/* HEADER */}
-      <div style={{ padding: 15, background: "white", position: "sticky", top: 0 }}>
+      <div style={{
+        padding: 15,
+        background: "white",
+        display: "flex",
+        justifyContent: "space-between"
+      }}>
         <h2>🍽️ Tirupati Food Stall</h2>
+
+        <button onClick={() => setView(view === "customer" ? "owner" : "customer")}>
+          Switch to {view === "customer" ? "Owner" : "Customer"}
+        </button>
       </div>
 
-      {/* CUSTOMER MENU */}
-      <div style={{ padding: 15 }}>
-        {Object.entries(menu).map(([category, items]) => (
-          <div key={category}>
-            <h3>{category}</h3>
+      {/* ================= CUSTOMER VIEW ================= */}
+      {view === "customer" && (
+        <div style={{ padding: 15 }}>
+          {Object.entries(menu).map(([cat, items]) => (
+            <div key={cat}>
+              <h3>{cat}</h3>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {items.map((item) => (
-                <div key={item.name} style={{ background: "white", padding: 10 }}>
-                  <img src={item.image} style={{ width: "100%", height: 100, objectFit: "cover" }} />
-
-                  <b>{item.name}</b>
-                  <div>₹{item.price}</div>
+                <div
+                  key={item.name}
+                  style={{
+                    background: "white",
+                    padding: 10,
+                    marginBottom: 10,
+                    display: "flex",
+                    justifyContent: "space-between"
+                  }}
+                >
+                  <div>
+                    <b>{item.name}</b>
+                    <div>₹{item.price}</div>
+                  </div>
 
                   <div>
                     <button onClick={() => removeItem(item.name)}>-</button>
@@ -108,12 +127,12 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* CART BAR */}
-      {total > 0 && (
+      {view === "customer" && total > 0 && (
         <div style={{
           position: "fixed",
           bottom: 0,
@@ -130,19 +149,16 @@ export default function Home() {
         </div>
       )}
 
-      {/* TOKEN DISPLAY */}
-      {token && (
+      {/* TOKEN */}
+      {token && view === "customer" && (
         <div style={{
           position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          inset: 0,
           background: "white",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center"
+          justifyContent: "center",
+          alignItems: "center"
         }}>
           <h2>🎟️ Token</h2>
           <h1>{token}</h1>
@@ -150,44 +166,46 @@ export default function Home() {
         </div>
       )}
 
-      {/* 🧑‍🍳 OWNER DASHBOARD */}
-      <div style={{ padding: 15 }}>
-        <h2>🧑‍🍳 Live Orders (Owner Panel)</h2>
+      {/* ================= OWNER VIEW ================= */}
+      {view === "owner" && (
+        <div style={{ padding: 15 }}>
+          <h2>🧑‍🍳 Owner Dashboard</h2>
 
-        {orders.length === 0 && <p>No orders yet</p>}
+          {orders.length === 0 && <p>No orders yet</p>}
 
-        {orders.map((order) => (
-          <div
-            key={order.token}
-            style={{
-              background: "white",
-              padding: 10,
-              marginBottom: 10,
-              borderLeft: "5px solid green"
-            }}
-          >
-            <h3>Token: {order.token}</h3>
-            <p>Total: ₹{order.total}</p>
-            <p>Status: <b>{order.status}</b></p>
+          {orders.map((order) => (
+            <div
+              key={order.token}
+              style={{
+                background: "white",
+                padding: 10,
+                marginBottom: 10,
+                borderLeft: "5px solid green"
+              }}
+            >
+              <h3>Token: {order.token}</h3>
+              <p>Total: ₹{order.total}</p>
+              <p>Status: <b>{order.status}</b></p>
 
-            <ul>
-              {Object.values(order.items).map((i) => (
-                <li key={i.name}>
-                  {i.name} × {i.qty}
-                </li>
-              ))}
-            </ul>
+              <ul>
+                {Object.values(order.items).map((i) => (
+                  <li key={i.name}>
+                    {i.name} × {i.qty}
+                  </li>
+                ))}
+              </ul>
 
-            <button onClick={() => updateStatus(order.token, "Preparing")}>
-              Preparing
-            </button>
+              <button onClick={() => updateStatus(order.token, "Preparing")}>
+                Preparing
+              </button>
 
-            <button onClick={() => updateStatus(order.token, "Ready")}>
-              Ready
-            </button>
-          </div>
-        ))}
-      </div>
+              <button onClick={() => updateStatus(order.token, "Ready")}>
+                Ready
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
     </div>
   );
