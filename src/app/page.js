@@ -19,10 +19,17 @@ export default function Home() {
 
   const [cart, setCart] = useState({});
   const [orders, setOrders] = useState([]);
-  const [view, setView] = useState("customer"); // 👈 toggle screen
+  const [view, setView] = useState("customer");
+
+  // OWNER LOGIN STATES
+  const [loginUser, setLoginUser] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [isOwner, setIsOwner] = useState(false);
+  const [loginError, setLoginError] = useState("");
+
   const [token, setToken] = useState(null);
 
-  // ADD
+  // ADD ITEM
   const addItem = (item) => {
     setCart((prev) => ({
       ...prev,
@@ -32,7 +39,7 @@ export default function Home() {
     }));
   };
 
-  // REMOVE
+  // REMOVE ITEM
   const removeItem = (name) => {
     setCart((prev) => {
       const copy = { ...prev };
@@ -68,13 +75,30 @@ export default function Home() {
     setCart({});
   };
 
-  // STATUS UPDATE
+  // UPDATE STATUS
   const updateStatus = (token, status) => {
     setOrders((prev) =>
       prev.map((o) =>
         o.token === token ? { ...o, status } : o
       )
     );
+  };
+
+  // LOGIN FUNCTION
+  const handleLogin = () => {
+    if (loginUser === "aravind" && loginPass === "1234") {
+      setIsOwner(true);
+      setView("owner");
+      setLoginError("");
+    } else {
+      setLoginError("Invalid username or password");
+    }
+  };
+
+  // LOGOUT
+  const logout = () => {
+    setIsOwner(false);
+    setView("customer");
   };
 
   return (
@@ -89,10 +113,56 @@ export default function Home() {
       }}>
         <h2>🍽️ Tirupati Food Stall</h2>
 
-        <button onClick={() => setView(view === "customer" ? "owner" : "customer")}>
-          Switch to {view === "customer" ? "Owner" : "Customer"}
+        <button
+          onClick={() => setView(view === "customer" ? "login" : "customer")}
+        >
+          Owner Login
         </button>
       </div>
+
+      {/* ================= LOGIN PAGE ================= */}
+      {view === "login" && !isOwner && (
+        <div style={{
+          padding: 20,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          maxWidth: 300
+        }}>
+          <h2>🔐 Owner Login</h2>
+
+          <input
+            placeholder="Username"
+            value={loginUser}
+            onChange={(e) => setLoginUser(e.target.value)}
+            style={{ padding: 10 }}
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={loginPass}
+            onChange={(e) => setLoginPass(e.target.value)}
+            style={{ padding: 10 }}
+          />
+
+          <button
+            onClick={handleLogin}
+            style={{
+              padding: 10,
+              background: "green",
+              color: "white",
+              border: "none"
+            }}
+          >
+            Login
+          </button>
+
+          {loginError && (
+            <p style={{ color: "red" }}>{loginError}</p>
+          )}
+        </div>
+      )}
 
       {/* ================= CUSTOMER VIEW ================= */}
       {view === "customer" && (
@@ -166,10 +236,16 @@ export default function Home() {
         </div>
       )}
 
-      {/* ================= OWNER VIEW ================= */}
-      {view === "owner" && (
+      {/* ================= OWNER DASHBOARD ================= */}
+      {view === "owner" && isOwner && (
         <div style={{ padding: 15 }}>
-          <h2>🧑‍🍳 Owner Dashboard</h2>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h2>🧑‍🍳 Owner Dashboard</h2>
+
+            <button onClick={logout}>
+              Logout
+            </button>
+          </div>
 
           {orders.length === 0 && <p>No orders yet</p>}
 
