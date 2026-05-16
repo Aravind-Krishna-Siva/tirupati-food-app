@@ -1,27 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { pb } from "./pocketbase";
 
 export default function Home() {
-  const menu = {
-    Juices: [
-      { name: "Lemon Juice", price: 20 },
-      { name: "Sugarcane Juice", price: 30 }
-    ],
-    Breakfast: [
-      { name: "Dosa", price: 50 },
-      { name: "Idli", price: 30 }
-    ],
-    Meals: [
-      { name: "Egg Curry", price: 70 }
-    ]
-  };
-
+  const [menu, setMenu] = useState([]);
   const [cart, setCart] = useState({});
   const [orders, setOrders] = useState([]);
   const [view, setView] = useState("customer");
 
-  // OWNER LOGIN STATES
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [isOwner, setIsOwner] = useState(false);
@@ -29,62 +16,119 @@ export default function Home() {
 
   const [token, setToken] = useState(null);
 
-  // ADD ITEM
+  useEffect(() => {
+    loadItems();
+    loadOrders();
+
+    pb.collection("orders").subscribe("*", () => {
+      loadOrders();
+    });
+
+    return () => {
+      pb.collection("orders").unsubscribe("*");
+    };
+  }, []);
+
+  const loadItems = async () => {
+    try {
+      const records = await pb.collection("items").getFullList({
+        sort: "-created",
+      });
+
+      setMenu(records);
+    } catch (error) {
+      console.error("Items load error:", error);
+    }
+  };
+
+  const loadOrders = async () => {
+    try {
+      const records = await pb.collection("orders").getFullList({
+        sort: "-created",
+      });
+
+      setOrders(records);
+    } catch (error) {
+      console.error("Orders load error:", error);
+    }
+  };
+
+  const getImageUrl = (item) => {
+    if (!item.image) return "";
+    return `http://127.0.0.1:8090/api/files/items/${item.id}/${item.image}`;
+  };
+
   const addItem = (item) => {
     setCart((prev) => ({
       ...prev,
       [item.name]: prev[item.name]
         ? { ...item, qty: prev[item.name].qty + 1 }
-        : { ...item, qty: 1 }
+        : { ...item, qty: 1 },
     }));
   };
 
-  // REMOVE ITEM
   const removeItem = (name) => {
     setCart((prev) => {
       const copy = { ...prev };
+
       if (!copy[name]) return prev;
 
-      if (copy[name].qty === 1) delete copy[name];
-      else copy[name].qty -= 1;
+      if (copy[name].qty === 1) {
+        delete copy[name];
+      } else {
+        copy[name].qty -= 1;
+      }
 
       return copy;
     });
   };
 
   const total = Object.values(cart).reduce(
-    (sum, item) => sum + item.price * item.qty,
+    (sum, item) => sum + Number(item.price) * item.qty,
     0
   );
 
-  // PLACE ORDER
-  const placeOrder = () => {
+  const placeOrder = async () => {
     if (total <= 0) return;
 
     const newToken = "TIR" + Math.floor(1000 + Math.random() * 9000);
 
-    const newOrder = {
-      token: newToken,
-      items: cart,
-      total,
-      status: "Pending"
-    };
+    const orderItems = Object.values(cart).map((item) => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      qty: item.qty,
+    }));
 
-    setOrders((prev) => [newOrder, ...prev]);
-    setToken(newToken);
-    setCart({});
+    try {
+      await pb.collection("orders").create({
+        token: newToken,
+        items: JSON.stringify(orderItems),
+        total,
+        status: "Pending",
+      });
+
+      setToken(newToken);
+      setCart({});
+      loadOrders();
+    } catch (error) {
+      console.error("Order create error:", error);
+      alert("Order failed. Please try again.");
+    }
   };
 
-  // UPDATE STATUS
-  const updateStatus = (token, status) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.token === token ? { ...o, status } : o
-      )
-    );
+  const updateStatus = async (id, status) => {
+    try {
+      await pb.collection("orders").update(id, {
+        status,
+      });
+
+      loadOrders();
+    } catch (error) {
+      console.error("Status update error:", error);
+    }
   };
 
-  // LOGIN FUNCTION
   const handleLogin = () => {
     if (loginUser === "aravind" && loginPass === "1234") {
       setIsOwner(true);
@@ -95,40 +139,54 @@ export default function Home() {
     }
   };
 
-  // LOGOUT
   const logout = () => {
     setIsOwner(false);
     setView("customer");
   };
 
   return (
-    <div style={{ fontFamily: "Arial", background: "#f5f5f5", minHeight: "100vh" }}>
-
-      {/* HEADER */}
-      <div style={{
-        padding: 15,
-        background: "white",
-        display: "flex",
-        justifyContent: "space-between"
-      }}>
+    <div
+      style={{
+        fontFamily: "Arial",
+        background: "#f5f5f5",
+        minHeight: "100vh",
+        paddingBottom: 80,
+      }}
+    >
+      <div
+        style={{
+          padding: 15,
+          background: "white",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+        }}
+      >
         <h2>🍽️ Tirupati Food Stall</h2>
 
         <button
-          onClick={() => setView(view === "customer" ? "login" : "customer")}
+          onClick={() =>
+            setView(view === "customer" ? "login" : "customer")
+          }
         >
-          Owner Login
+          {view === "customer" ? "Owner Login" : "Customer View"}
         </button>
       </div>
 
-      {/* ================= LOGIN PAGE ================= */}
       {view === "login" && !isOwner && (
-        <div style={{
-          padding: 20,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          maxWidth: 300
-        }}>
+        <div
+          style={{
+            padding: 20,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            maxWidth: 300,
+            margin: "auto",
+          }}
+        >
           <h2>🔐 Owner Login</h2>
 
           <input
@@ -152,137 +210,176 @@ export default function Home() {
               padding: 10,
               background: "green",
               color: "white",
-              border: "none"
+              border: "none",
             }}
           >
             Login
           </button>
 
-          {loginError && (
-            <p style={{ color: "red" }}>{loginError}</p>
-          )}
+          {loginError && <p style={{ color: "red" }}>{loginError}</p>}
         </div>
       )}
 
-      {/* ================= CUSTOMER VIEW ================= */}
       {view === "customer" && (
         <div style={{ padding: 15 }}>
-          {Object.entries(menu).map(([cat, items]) => (
-            <div key={cat}>
-              <h3>{cat}</h3>
+          <h3>Menu</h3>
 
-              {items.map((item) => (
-                <div
-                  key={item.name}
-                  style={{
-                    background: "white",
-                    padding: 10,
-                    marginBottom: 10,
-                    display: "flex",
-                    justifyContent: "space-between"
-                  }}
-                >
-                  <div>
-                    <b>{item.name}</b>
-                    <div>₹{item.price}</div>
-                  </div>
+          {menu.length === 0 && <p>No items found. Add items in PocketBase.</p>}
 
-                  <div>
-                    <button onClick={() => removeItem(item.name)}>-</button>
-                    <span style={{ margin: "0 10px" }}>
-                      {cart[item.name]?.qty || 0}
-                    </span>
-                    <button onClick={() => addItem(item)}>+</button>
-                  </div>
+          {menu.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                background: "white",
+                padding: 12,
+                marginBottom: 12,
+                display: "flex",
+                gap: 12,
+                justifyContent: "space-between",
+                borderRadius: 12,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              }}
+            >
+              <div style={{ display: "flex", gap: 12 }}>
+                {item.image && (
+                  <img
+                    src={getImageUrl(item)}
+                    alt={item.name}
+                    width="90"
+                    height="90"
+                    style={{
+                      borderRadius: 12,
+                      objectFit: "cover",
+                    }}
+                  />
+                )}
+
+                <div>
+                  <b>{item.name}</b>
+                  <div>₹{item.price}</div>
+                  <small>{item.category}</small>
                 </div>
-              ))}
+              </div>
+
+              <div>
+                <button onClick={() => removeItem(item.name)}>-</button>
+
+                <span style={{ margin: "0 10px" }}>
+                  {cart[item.name]?.qty || 0}
+                </span>
+
+                <button onClick={() => addItem(item)}>+</button>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* CART BAR */}
       {view === "customer" && total > 0 && (
-        <div style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "green",
-          color: "white",
-          padding: 15,
-          display: "flex",
-          justifyContent: "space-between"
-        }}>
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: "green",
+            color: "white",
+            padding: 15,
+            display: "flex",
+            justifyContent: "space-between",
+            zIndex: 20,
+          }}
+        >
           <span>🛒 ₹{total}</span>
           <button onClick={placeOrder}>Place Order</button>
         </div>
       )}
 
-      {/* TOKEN */}
       {token && view === "customer" && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "white",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center"
-        }}>
-          <h2>🎟️ Token</h2>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "white",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 30,
+          }}
+        >
+          <h2>🎟️ Your Token</h2>
           <h1>{token}</h1>
+          <p>Please show this token at counter.</p>
           <button onClick={() => setToken(null)}>Close</button>
         </div>
       )}
 
-      {/* ================= OWNER DASHBOARD ================= */}
       {view === "owner" && isOwner && (
         <div style={{ padding: 15 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <h2>🧑‍🍳 Owner Dashboard</h2>
-
-            <button onClick={logout}>
-              Logout
-            </button>
+            <button onClick={logout}>Logout</button>
           </div>
 
           {orders.length === 0 && <p>No orders yet</p>}
 
-          {orders.map((order) => (
-            <div
-              key={order.token}
-              style={{
-                background: "white",
-                padding: 10,
-                marginBottom: 10,
-                borderLeft: "5px solid green"
-              }}
-            >
-              <h3>Token: {order.token}</h3>
-              <p>Total: ₹{order.total}</p>
-              <p>Status: <b>{order.status}</b></p>
+          {orders.map((order) => {
+            let parsedItems = [];
 
-              <ul>
-                {Object.values(order.items).map((i) => (
-                  <li key={i.name}>
-                    {i.name} × {i.qty}
-                  </li>
-                ))}
-              </ul>
+            try {
+              parsedItems = JSON.parse(order.items || "[]");
+            } catch {
+              parsedItems = [];
+            }
 
-              <button onClick={() => updateStatus(order.token, "Preparing")}>
-                Preparing
-              </button>
+            return (
+              <div
+                key={order.id}
+                style={{
+                  background: "white",
+                  padding: 12,
+                  marginBottom: 12,
+                  borderLeft: "5px solid green",
+                  borderRadius: 10,
+                }}
+              >
+                <h3>Token: {order.token}</h3>
+                <p>Total: ₹{order.total}</p>
+                <p>
+                  Status: <b>{order.status}</b>
+                </p>
 
-              <button onClick={() => updateStatus(order.token, "Ready")}>
-                Ready
-              </button>
-            </div>
-          ))}
+                <ul>
+                  {parsedItems.map((i) => (
+                    <li key={i.name}>
+                      {i.name} × {i.qty}
+                    </li>
+                  ))}
+                </ul>
+
+                <button onClick={() => updateStatus(order.id, "Preparing")}>
+                  Preparing
+                </button>
+
+                <button
+                  onClick={() => updateStatus(order.id, "Ready")}
+                  style={{ marginLeft: 10 }}
+                >
+                  Ready
+                </button>
+
+                <button
+                  onClick={() => updateStatus(order.id, "Delivered")}
+                  style={{ marginLeft: 10 }}
+                >
+                  Delivered
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
-
     </div>
   );
 }
