@@ -18,7 +18,7 @@ export default function Home() {
     ]
   };
 
-  const upiId = "9618060633@ybl";
+  const upiId = "9618060633.wallet@phonepe";
   const name = "Tirupati Food Stall";
 
   const [cart, setCart] = useState({});
